@@ -1,183 +1,297 @@
-See installation instructions [here](https://docs.google.com/document/d/1IfJzA2jITbb3wsRPl3mJKoSyKD6JqlM8UIedhuZYigE/edit?tab=t.0#heading=h.ny8icf1itmoq).
+# Accelerating Medical Image Segmentation with EfficientViT-SAM
+*Isaac (Zack) Duitz · Sophie Guo · Sam Mitchell · Evan Rubel · Collin Wen*
 
+This is the code repository accompanying the project report [“Accelerating Medical Image Segmentation with EfficientViT-SAM”](Accelerating%20Med%20Img%20Seg%20with%20EfficientVIT-SAM.pdf).
 
+The project compares three models on the CVPR 2024 Segment Anything in Medical Images on Laptop benchmark setting:
 
-<br></br>
-<br></br>
-<br></br>
-<br></br>
+- `EfficientViT-SAM`
+- `Medficient-SAM`
+- `EfficientViT-MedSAM`
 
+The main goal is to understand the tradeoff between segmentation quality and inference efficiency across a diverse medical imaging dataset containing both 2D and 3D cases.
 
+## Background and Motivation
 
+Medical image segmentation is important for diagnosis and treatment planning, but many state-of-the-art promptable segmentation models are too large or too slow for practical deployment in resource-constrained settings.
 
-# EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction [[paper](https://arxiv.org/abs/2205.14756)]
+This project evaluates whether EfficientViT-SAM can provide a better efficiency/accuracy tradeoff for medical segmentation. In particular, it studies:
 
-**Efficient vision foundation models for high-resolution generation and perception.**
+- zero-shot segmentation performance of EfficientViT-SAM on medical images
+- performance of Medficient-SAM as a strong distilled medical baseline
+- performance of `EfficientViT-MedSAM`, obtained by fine-tuning EfficientViT-SAM directly on medical segmentation data
 
-## Content
+The project uses bounding boxes as prompts and evaluates segmentation accuracy and throughput on the CVPR 2024 medical laptop challenge validation set.
 
-### Deep Compression Autoencoder for Efficient High-Resolution Diffusion Models [[paper](https://arxiv.org/abs/2410.10733)] [[readme](applications/dc_ae/README.md)]
+## What This Project Studies
 
-**Deep Compression Autoencoder (DC-AE) is a new family of high-spatial compression autoencoders with a spatial compression ratio of up to 128 while maintaining reconstruction quality. It accelerates all latent diffusion models regardless of the diffusion model architecture.**
+The project focuses on three questions:
 
-#### Updates
+1. How well does `EfficientViT-SAM` transfer to medical image segmentation in the zero-shot setting?
+2. How much does direct medical fine-tuning improve EfficientViT-SAM, producing `EfficientViT-MedSAM`?
+3. How does that fine-tuned model compare against `Medficient-SAM`, a stronger medical-domain baseline built with knowledge distillation?
 
-- We add UViT-2B trained with DC-AE-f64p1 on ImageNet 512x512: [link](https://huggingface.co/collections/mit-han-lab/dc-ae-diffusion-670dbb8d6b6914cf24c1a49d).
-<p align="left">
-<img src="assets/uvit_2b_imagenet_512px.png"  width="1200">
-</p>
+The broader motivation is practical deployment: preserve as much segmentation quality as possible while keeping inference fast enough for large-scale or resource-constrained medical workflows.
 
-- We add model scaling results on ImageNet 512x512 with UViT variants (UViT-S -> UViT-2B). DC-AE-f64 benefits more from scaling up than SD-VAE-f8:
-<p align="left">
-<img src="assets/diffusion_scaling_up.jpg"  width="300">
-</p>
+## Models
 
-#### Demo
+### EfficientViT-SAM
 
-![demo](https://huggingface.co/mit-han-lab/dc-ae-f64c128-in-1.0/resolve/main/assets/dc_ae_demo.gif)
-<p align="center">
-<b> Figure 1: We address the reconstruction accuracy drop of high spatial-compression autoencoders.
-</p>
+A lightweight promptable segmentation model based on EfficientViT-SAM. It is efficient and general-purpose, but not specialized for medical images.
 
-![demo](assets/dc_ae_diffusion_demo.gif)
-<p align="center">
-<b> Figure 2: DC-AE speeds up latent diffusion models.
-</p>
+### Medficient-SAM
 
-<p align="left">
-<img src="https://huggingface.co/mit-han-lab/dc-ae-f64c128-in-1.0/resolve/main/assets/Sana-0.6B-laptop.png"  width="1200">
-</p>
+A medical segmentation model based on MedSAM with an optimized EfficientViT-style inference pipeline. It uses knowledge distillation from a stronger medical model and serves as the strongest domain-specific baseline in this project.
 
-<p align="center">
-<img src="https://huggingface.co/mit-han-lab/dc-ae-f64c128-in-1.0/resolve/main/assets/dc_ae_sana.jpg"  width="1200">
-</p>
+Reference repo:
 
-<p align="center">
-<b> Figure 3: DC-AE enables efficient text-to-image generation on the laptop. For more details, please check our text-to-image diffusion model <a href="https://nvlabs.github.io/Sana/">SANA</a>.
-</p>
+- https://github.com/hieplpvip/medficientsam
 
-- [Usage of Deep Compression Autoencoder](applications/dc_ae/README.md#deep-compression-autoencoder)
-- [Usage of DC-AE-Diffusion](applications/dc_ae/README.md#efficient-diffusion-models-with-dc-ae)
-- [Evaluate Deep Compression Autoencoder](applications/dc_ae/README.md#evaluate-deep-compression-autoencoder)
-- [Demo DC-AE-Diffusion Models](applications/dc_ae/README.md#demo-dc-ae-diffusion-models)
-- [Evaluate DC-AE-Diffusion Models](applications/dc_ae/README.md#evaluate-dc-ae-diffusion-models)
-- [Train DC-AE-Diffusion Models](applications/dc_ae/README.md#train-dc-ae-diffusion-models)
-- [Reference](applications/dc_ae/README.md#reference)
+### EfficientViT-MedSAM
 
-### EfficientViT-SAM: Accelerated Segment Anything Model Without Accuracy Loss [[paper](https://arxiv.org/abs/2402.05008)] [[online demo](https://evitsam.hanlab.ai/)] [[readme](applications/efficientvit_sam/README.md)]
+This project’s fine-tuned model. It starts from EfficientViT-SAM and is directly fine-tuned on medical image segmentation data, without the knowledge-distillation pipeline used by Medficient-SAM.
 
-**EfficientViT-SAM is a new family of accelerated segment anything models by replacing SAM's heavy image encoder with EfficientViT. It delivers a 48.9x measured TensorRT speedup on A100 GPU over SAM-ViT-H without sacrificing accuracy.**
+## Dataset
 
-<p align="left">
-<img src="https://huggingface.co/mit-han-lab/efficientvit-sam/resolve/main/sam_zero_shot_coco_mAP.png"  width="500">
-</p>
+The experiments use the CVPR 2024 Segment Anything in Medical Images on Laptop challenge dataset.
 
-- [Pretrained EfficientViT-SAM Models](applications/efficientvit_sam/README.md#pretrained-efficientvit-sam-models)
-- [Usage of EfficientViT-SAM](applications/efficientvit_sam/README.md#usage)
-- [Evaluate EfficientViT-SAM](applications/efficientvit_sam/README.md#evaluation)
-- [Visualize EfficientViT-SAM](applications/efficientvit_sam/README.md#visualization)
-- [Deploy EfficientViT-SAM](applications/efficientvit_sam/README.md#deployment)
-- [Train EfficientViT-SAM](applications/efficientvit_sam/README.md#training)
-- [Reference](applications/efficientvit_sam/README.md#reference)
+The validation set contains 2D and 3D medical images across 11 modalities:
 
-### EfficientViT-Classification [[paper](https://arxiv.org/abs/2205.14756)] [[readme](applications/efficientvit_cls/README.md)]
+- CT
+- Dermoscopy
+- Endoscopy
+- Fundus
+- Mammography
+- Microscopy
+- MR
+- OCT
+- PET
+- Ultrasound
+- X-Ray
 
-**Efficient image classification models with EfficientViT backbones.**
+Reported dataset counts from the project writeup:
 
-<p align="left">
-<img src="https://huggingface.co/han-cai/efficientvit-cls/resolve/main/efficientvit_cls_results.png"  width="600">
-</p>
+| Modality | Train | Validation |
+| --- | ---: | ---: |
+| CT | 14622 | 1140 |
+| Dermoscopy | 3694 | 66 |
+| Endoscopy | 43443 | 200 |
+| Fundus | 1057 | 10 |
+| Mammography | 1233 | -- |
+| Microscopy | 1000 | 50 |
+| MR | 5144 | 628 |
+| OCT | 1436 | -- |
+| PET | 546 | 3 |
+| US | 1646 | 600 |
+| X-Ray | 34893 | 379 |
+| Total | 121718 | 3076 |
 
-- [Pretrained EfficientViT Classification Models](applications/efficientvit_cls/README.md#pretrained-efficientvit-classification-models)
-- [Usage of EfficientViT Classification Models](applications/efficientvit_cls/README.md#usage)
-- [Evaluate EfficientViT Classification Models](applications/efficientvit_cls/README.md#evaluation)
-- [Export EfficientViT Classification Models](applications/efficientvit_cls/README.md#export)
-- [Train EfficientViT Classification Models](applications/efficientvit_cls/README.md#training)
-- [Reference](applications/efficientvit_cls/README.md#reference)
+Based on the MedficientSAM setup, dataset access requires participating in the challenge and downloading the data separately:
 
-### EfficientViT-Segmentation [[paper](https://arxiv.org/abs/2205.14756)] [[readme](applications/efficientvit_seg/README.md)]
+- Challenge: https://www.codabench.org/competitions/1847/
 
-**Efficient semantic segmantation models with EfficientViT backbones.**
+Expected directory layout:
 
-![demo](assets/cityscapes_l1.gif)
+```text
+CVPR24-MedSAMLaptopData
+├── train_npz
+│   ├── CT
+│   ├── Dermoscopy
+│   ├── Endoscopy
+│   ├── Fundus
+│   ├── Mammography
+│   ├── Microscopy
+│   ├── MR
+│   ├── OCT
+│   ├── PET
+│   ├── US
+│   └── XRay
+└── validation-box
+    └── imgs
+```
 
-- [Pretrained EfficientViT Segmentation Models](applications/efficientvit_seg/README.md#pretrained-efficientvit-segmentation-models)
-- [Usage of EfficientViT Segmentation Models](applications/efficientvit_seg/README.md#usage)
-- [Evaluate EfficientViT Segmentation Models](applications/efficientvit_seg/README.md#evaluation)
-- [Visualize EfficientViT Segmentation Models](applications/efficientvit_seg/README.md#visualization)
-- [Export EfficientViT Segmentation Models](applications/efficientvit_seg/README.md#export)
-- [Reference](applications/efficientvit_seg/README.md#reference)
+The MedSAM data loader in this repo expects `.npz`-based inputs. The most relevant code is:
 
-### EfficientViT-GazeSAM [[readme](applications/efficientvit_gazesam/README.md)]
+- [medsam.py](/Users/sophieguo/Documents/GitHub/efficientvit-medical/efficientvit/samcore/data_provider/medsam.py)
+- [eval_efficientvit_medsam_model.py](/Users/sophieguo/Documents/GitHub/efficientvit-medical/applications/efficientvit_sam/eval_efficientvit_medsam_model.py)
 
-**Gaze-prompted image segmentation models capable of running in real time with TensorRT on an NVIDIA RTX 4070.**
+## Method
 
-![GazeSAM demo](https://huggingface.co/mit-han-lab/efficientvit-sam/resolve/main/gazesam/efficientvit_gazesam_demo.gif)
+The project performs two main tasks:
 
-## News
+1. Fine-tune EfficientViT-SAM on the CVPR medical training data to produce `EfficientViT-MedSAM`.
+2. Evaluate all three models on the validation set using ground-truth bounding boxes as prompts.
 
-**If you are interested in getting updates, please join our mailing list [here](https://forms.gle/Z6DNkRidJ1ouxmUk9).**
+Evaluation is performed on both 2D and 3D cases.
 
-- [2024/10/21] DC-AE and EfficientViT block are used in our latest text-to-image diffusion model SANA! Check the [project page](https://nvlabs.github.io/Sana/) for more details.
-- [2024/10/15] We released **Deep Compression Autoencoder (DC-AE)**: [link](#deep-compression-autoencoder-for-efficient-high-resolution-diffusion-models-paper-readme)!
-- [2024/07/10] EfficientViT is used as the backbone in [Grounding DINO 1.5 Edge](https://arxiv.org/pdf/2405.10300) for efficient open-set object detection.
-- [2024/07/10] EfficientViT-SAM is used in [MedficientSAM](https://github.com/hieplpvip/medficientsam), the 1st place model in [CVPR 2024 Segment Anything In Medical Images On Laptop Challenge](https://www.codabench.org/competitions/1847/).
-- [2024/07/10] An FPGA-based accelerator for EfficientViT: [link](https://arxiv.org/abs/2403.20230).
-- [2024/04/23] We released the training code of EfficientViT-SAM.
-- [2024/04/06] EfficientViT-SAM is accepted by [eLVM@CVPR'24](https://sites.google.com/view/elvm/home?authuser=0).
-- [2024/03/19] Online demo of EfficientViT-SAM is available: [https://evitsam.hanlab.ai/](https://evitsam.hanlab.ai/). 
-- [2024/02/07] We released [EfficientViT-SAM](https://arxiv.org/abs/2402.05008), the first accelerated SAM model that matches/outperforms SAM-ViT-H's zero-shot performance, delivering the SOTA performance-efficiency trade-off.
-- [2023/11/20] EfficientViT is available in the [NVIDIA Jetson Generative AI Lab](https://www.jetson-ai-lab.com/tutorial_efficientvit.html).
-- [2023/09/12] EfficientViT is highlighted by [MIT home page](https://www.mit.edu/archive/spotlight/efficient-computer-vision/) and [MIT News](https://news.mit.edu/2023/ai-model-high-resolution-computer-vision-0912).
-- [2023/07/18] EfficientViT is accepted by ICCV 2023.
+For 2D images:
 
-## Getting Started
+- each mask is predicted from its corresponding bounding box
+
+For 3D images:
+
+- segmentation is performed slice-by-slice using 3D box information
+- inference is only run on slices whose z-coordinate lies within at least one bounding box
+
+## Metrics
+
+The project focuses on both segmentation quality and efficiency.
+
+Primary metrics:
+
+- Dice Similarity Coefficient (DSC)
+- IoU
+- inference throughput for 2D images
+- inference throughput for 3D images
+
+The helper script in this repo for evaluation metrics is:
+
+- [calc_acc.py](/Users/sophieguo/Documents/GitHub/efficientvit-medical/calc_acc.py)
+
+## Main Results
+
+From the project report, the main A100 validation-set results are:
+
+| Model | 2D Dice (%) | 2D Throughput (imgs/s) | 3D Dice (%) | 3D Throughput (imgs/s) |
+| --- | ---: | ---: | ---: | ---: |
+| EfficientViT-SAM | 57.39 | 162.76 | 29.57 | 3.92 |
+| EfficientViT-MedSAM | 81.21 | 160.40 | 41.86 | 4.61 |
+| Medficient-SAM | 86.42 | 50.00 | 70.21 | 2.33 |
+
+Main conclusions:
+
+- Fine-tuning EfficientViT-SAM on medical data substantially improves accuracy.
+- `EfficientViT-MedSAM` keeps nearly the same throughput as vanilla EfficientViT-SAM while improving Dice significantly.
+- `Medficient-SAM` achieves the best segmentation accuracy, especially on 3D data, but is slower.
+- EfficientViT-based models appear to offer a strong efficiency advantage for medical segmentation workloads.
+
+## EfficientViT-SAM Weights
+
+EfficientViT-SAM weights can be downloaded from:
+
+- https://drive.google.com/drive/folders/1AdpE0s2bFd14BQ4fx-jL5g2TTHiKw2Ky?usp=sharing
+
+The model zoo code expects checkpoints under:
+
+```text
+assets/checkpoints/efficientvit_sam/
+```
+
+Typical filenames:
+
+- `efficientvit_sam_l0.pt`
+- `efficientvit_sam_l1.pt`
+- `efficientvit_sam_l2.pt`
+- `efficientvit_sam_xl0.pt`
+- `efficientvit_sam_xl1.pt`
+
+Some training configs in this repo also reference:
+
+```text
+assets/checkpoints/efficientvit_sam/distilled_model/
+```
+
+If you keep the config paths unchanged, make sure those checkpoint files exist there, or edit the config to point to your local weights.
+
+## Setup
+
+Basic environment:
 
 ```bash
-conda create -n efficientvit python=3.10
-conda activate efficientvit
+conda create -n efficientvit-medical python=3.10
+conda activate efficientvit-medical
 pip install -U -r requirements.txt
 ```
 
-## Third-Party Implementation/Integration
+The code assumes:
 
-- [NVIDIA Jetson Generative AI Lab](https://www.jetson-ai-lab.com/tutorial_efficientvit.html)
-- [timm](https://github.com/huggingface/pytorch-image-models): [link](https://github.com/huggingface/pytorch-image-models/blob/main/timm/models/efficientvit_mit.py)
-- [X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling): [link](https://github.com/CVHub520/X-AnyLabeling/blob/main/anylabeling/services/auto_labeling/efficientvit_sam.py)
-- [Grounding DINO 1.5 Edge](https://github.com/IDEA-Research/Grounding-DINO-1.5-API): [link](https://arxiv.org/pdf/2405.10300)
+- PyTorch
+- CUDA-capable GPUs
+- distributed launch through `torchrun`
 
-## Contact
+## Training
 
-[Han Cai](http://hancai.ai/)
+The main medical training entrypoint is:
 
-## Reference
+- [train_efficientvit_medsam_model.py](/Users/sophieguo/Documents/GitHub/efficientvit-medical/applications/efficientvit_sam/train_efficientvit_medsam_model.py)
 
-If EfficientViT or EfficientViT-SAM or DC-AE is useful or relevant to your research, please kindly recognize our contributions by citing our paper:
+Example:
 
-```bibtex
-@inproceedings{cai2023efficientvit,
-  title={Efficientvit: Lightweight multi-scale attention for high-resolution dense prediction},
-  author={Cai, Han and Li, Junyan and Hu, Muyan and Gan, Chuang and Han, Song},
-  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision},
-  pages={17302--17313},
-  year={2023}
-}
+```bash
+torchrun --nproc_per_node=4 applications/efficientvit_sam/train_efficientvit_medsam_model.py \
+  applications/efficientvit_sam/configs/efficientvit_sam_l1.yaml \
+  --data_provider.root /path/to/CVPR24-MedSAMLaptopData/train_npz \
+  --data_provider.dataset medsam \
+  --path exp/efficientvit_medsam/efficientvit_medsam_l1
 ```
 
-```bibtex
-@article{zhang2024efficientvit,
-  title={EfficientViT-SAM: Accelerated Segment Anything Model Without Performance Loss},
-  author={Zhang, Zhuoyang and Cai, Han and Han, Song},
-  journal={arXiv preprint arXiv:2402.05008},
-  year={2024}
-}
+Notes:
+
+- [sophie_train.sh](/Users/sophieguo/Documents/GitHub/efficientvit-medical/sophie_train.sh) contains a cluster-specific example.
+- The current MedSAM data provider includes a debug-oriented sample cap in the loader implementation.
+- `--resume` should only be used if the run directory already contains checkpoints.
+
+## Evaluation / Inference
+
+The main medical evaluation entrypoint is:
+
+- [eval_efficientvit_medsam_model.py](/Users/sophieguo/Documents/GitHub/efficientvit-medical/applications/efficientvit_sam/eval_efficientvit_medsam_model.py)
+
+Example:
+
+```bash
+torchrun --nproc_per_node=4 applications/efficientvit_sam/eval_efficientvit_medsam_model.py \
+  --model efficientvit-sam-l1 \
+  --weight_url /path/to/efficientvit_sam_l1.pt \
+  --image_size 512 \
+  --data_root /path/to/CVPR24-MedSAMLaptopData/validation-box/imgs \
+  --output_dir exp/efficientvit_medsam/infer/efficientvit_sam_l1 \
+  --save_overlay True
 ```
 
-```bibtex
-@article{chen2024deep,
-  title={Deep Compression Autoencoder for Efficient High-Resolution Diffusion Models},
-  author={Chen, Junyu and Cai, Han and Chen, Junsong and Xie, Enze and Yang, Shang and Tang, Haotian and Li, Muyang and Lu, Yao and Han, Song},
-  journal={arXiv preprint arXiv:2410.10733},
-  year={2024}
-}
-```
+This script supports:
+
+- 2D inference
+- 3D slice-wise propagation from box prompts
+- saving predicted segmentations as compressed `.npz`
+- overlay visualization
+- prediction time logging
+
+Cluster-specific wrappers:
+
+- [infer.sh](/Users/sophieguo/Documents/GitHub/efficientvit-medical/infer.sh)
+- [infer_sam.sh](/Users/sophieguo/Documents/GitHub/efficientvit-medical/infer_sam.sh)
+
+## Additional Local Script
+
+- [main.py](/Users/sophieguo/Documents/GitHub/efficientvit-medical/main.py)
+
+This is a local experimentation script for:
+
+- preprocessing volumetric medical data into slices
+- normalizing image data
+- running EfficientViT-SAM mask generation on processed slices
+
+It is useful for project experimentation, but it is not the main benchmark training/evaluation entrypoint.
+
+## Repository Structure
+
+
+- `efficientvit/models`
+  EfficientViT backbone and SAM definitions
+- `efficientvit/sam_model_zoo.py`
+  SAM model factory
+- `efficientvit/samcore`
+  SAM / MedSAM data providers and trainers
+- `applications/efficientvit_sam`
+  SAM / MedSAM app scripts
+
+
+
+
+## References
+
+- EfficientViT-SAM paper: Zhang, Zhuoyang, Han Cai, and Song Han. “EfficientViT-SAM: Accelerated Segment Anything Model Without Performance Loss.”
+- MedficientSAM: Le, Bao-Hiep, et al. “MedficientSAM: A robust medical segmentation model with optimized inference pipeline for limited clinical settings.”
+- EfficientViT repo: https://github.com/mit-han-lab/efficientvit
+- MedficientSAM repo: https://github.com/hieplpvip/medficientsam

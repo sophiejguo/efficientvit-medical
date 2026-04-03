@@ -69,7 +69,6 @@ The validation set contains 2D and 3D medical images across 11 modalities:
 - Ultrasound
 - X-Ray
 
-Reported dataset counts from the project writeup:
 
 | Modality | Train | Validation |
 | --- | ---: | ---: |
@@ -117,7 +116,7 @@ The MedSAM data loader in this repo expects `.npz`-based inputs. The most releva
 
 ## Method
 
-The project performs two main tasks:
+This project performs two main tasks:
 
 1. Fine-tune EfficientViT-SAM on the CVPR medical training data to produce `EfficientViT-MedSAM`.
 2. Evaluate all three models on the validation set using ground-truth bounding boxes as prompts.
@@ -135,7 +134,7 @@ For 3D images:
 
 ## Metrics
 
-The project focuses on both segmentation quality and efficiency.
+This project focuses on both segmentation quality and efficiency.
 
 Primary metrics:
 
@@ -150,7 +149,7 @@ The helper script in this repo for evaluation metrics is:
 
 ## Main Results
 
-From the project report, the main A100 validation-set results are:
+The main A100 validation-set results are:
 
 | Model | 2D Dice (%) | 2D Throughput (imgs/s) | 3D Dice (%) | 3D Throughput (imgs/s) |
 | --- | ---: | ---: | ---: | ---: |
